@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["fra1"],
+  "env": {
+    "DATABASE_URL": "@database-url",
+    "AUTH_SECRET": "@auth-secret",
+    "ENCRYPTION_KEY": "@encryption-key",
+    "ENCRYPTION_SALT": "@encryption-salt",
+    "SEED_SECRET": "@seed-secret",
+    "FORCE_SECURE_COOKIE": "1"
+  }
+}

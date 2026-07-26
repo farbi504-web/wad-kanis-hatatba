@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Production
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+!.env.production.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Backups
+*.sql
+*.sql.gz
+backups/
+*.dump
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+.nyc_output/
+
+# Uploads (احتفظ بها محلياً فقط)
+public/uploads/
+
+# Auto-restart logs
+/tmp/auto-restart.log
+/tmp/server.log
+
+# Generated
+*.tgz
+*.tar.gz
+.arena*
+
+# TypeScript
+*.tsbuildinfo
