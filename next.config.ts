@@ -34,7 +34,13 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "**" }],
+    remotePatterns: [
+      // تخزين Vercel Blob (صور الإعلانات والحسابات في الإنتاج)
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      // روابط صور خارجية يضيفها المدير (بانرات/رعاة)
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "res.cloudinary.com" },
+    ],
   },
 };
 

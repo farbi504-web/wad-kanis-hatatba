@@ -69,17 +69,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Prevent running if already initialized
-    const [existing] = await db
-      .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(categories);
-    if (Number(existing?.count) > 0) {
-      return NextResponse.json(
-        { error: { message: "البيانات مهيأة بالفعل" } },
-        { status: 409 },
-      );
-    }
-
+    // التهيئة تعمل بأمان أكثر من مرة: كل الإدراجات تستخدم
+    // onConflictDoNothing، وحساب المدير يُنشأ فقط إن لم يكن موجوداً.
+    // (سابقاً كان يخرج هنا عند وجود الفئات، فإذا فشلت التهيئة جزئياً
+    //  قبل إنشاء المدير يبقى الموقع بلا حساب مدير ولا سبيل لإنشائه.)
     for (const c of CITIES) {
       await db
         .insert(cities)
@@ -101,25 +94,55 @@ export async function POST(req: NextRequest) {
           set: { value: s.value, updatedAt: new Date() },
         });
     }
-    const adminEmail = "admin@wad-kanis.dz";
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@wad-kanis.dz";
     const [existingAdmin] = await db
       .select()
       .from(users)
       .where(sql`${users.email} = ${adminEmail}`)
       .limit(1);
+    let adminPasswordNotice: string | undefined;
     if (!existingAdmin) {
-      const passwordHash = await hashPassword("Admin@2026");
+      // كلمة مرور المدير تُقرأ من متغيرات البيئة.
+      // المستودع عام، لذا لا يجوز الاعتماد على قيمة مكتوبة في الكود.
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      if (!adminPassword) {
+        return NextResponse.json(
+          {
+            error: {
+              message:
+                "ADMIN_PASSWORD غير مضبوط. أضفه في متغيرات البيئة ثم أعد تشغيل التهيئة.",
+            },
+          },
+          { status: 400 },
+        );
+      }
+      if (adminPassword.length < 12) {
+        return NextResponse.json(
+          {
+            error: {
+              message: "ADMIN_PASSWORD يجب أن يكون 12 حرفاً على الأقل.",
+            },
+          },
+          { status: 400 },
+        );
+      }
+      const passwordHash = await hashPassword(adminPassword);
       await db.insert(users).values({
         email: adminEmail,
         passwordHash,
         fullName: "مدير المنصة",
-        phone: "0555498247",
+        phone: process.env.ADMIN_PHONE || "0555000000",
         role: "admin",
         isVerified: true,
       });
+      adminPasswordNotice = `تم إنشاء حساب المدير: ${adminEmail}`;
     }
     return NextResponse.json({
-      data: { ok: true, message: "تم تهيئة البيانات الأساسية" },
+      data: {
+        ok: true,
+        message: "تم تهيئة البيانات الأساسية",
+        ...(adminPasswordNotice ? { admin: adminPasswordNotice } : {}),
+      },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "خطأ";

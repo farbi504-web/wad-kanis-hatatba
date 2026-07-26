@@ -27,6 +27,10 @@ const SAFE_EXTENSIONS: Record<string, string> = {
   "image/webp": "webp",
 };
 
+// عند توفر BLOB_READ_WRITE_TOKEN تُخزَّن الصور في Vercel Blob (تخزين دائم).
+// بدونه يعود التخزين إلى القرص المحلي كما كان — مناسب للتطوير و VPS.
+const BLOB_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+
 export const dynamic = "force-dynamic";
 
 function detectMime(buf: Buffer): string | null {
@@ -145,20 +149,35 @@ export async function POST(req: NextRequest) {
     const ext = SAFE_EXTENSIONS[realMime];
     const fileName = `${randomUUID()}.${ext}`;
 
-    // Path safety check
-    const dir = path.join(process.cwd(), "public", "uploads", bucket);
-    const filepath = path.join(dir, fileName);
-    const resolvedFile = path.resolve(filepath);
-    const resolvedDir = path.resolve(dir);
+    let url: string;
 
-    if (!resolvedFile.startsWith(resolvedDir + path.sep)) {
-      throw new Error("Path traversal attempt blocked");
+    if (BLOB_ENABLED) {
+      // تخزين سحابي دائم (Vercel Blob) — ضروري على المنصات
+      // التي لا تحتفظ بنظام ملفات دائم مثل Vercel.
+      const { put } = await import("@vercel/blob");
+      const blob = await put(`${bucket}/${fileName}`, processedBuf, {
+        access: "public",
+        contentType: realMime,
+        addRandomSuffix: false,
+      });
+      url = blob.url;
+    } else {
+      // تخزين محلي على القرص (للتطوير أو VPS بقرص دائم)
+      // Path safety check
+      const dir = path.join(process.cwd(), "public", "uploads", bucket);
+      const filepath = path.join(dir, fileName);
+      const resolvedFile = path.resolve(filepath);
+      const resolvedDir = path.resolve(dir);
+
+      if (!resolvedFile.startsWith(resolvedDir + path.sep)) {
+        throw new Error("Path traversal attempt blocked");
+      }
+
+      if (!existsSync(dir)) await mkdir(dir, { recursive: true });
+      await writeFile(filepath, processedBuf);
+
+      url = `/uploads/${bucket}/${fileName}`;
     }
-
-    if (!existsSync(dir)) await mkdir(dir, { recursive: true });
-    await writeFile(filepath, processedBuf);
-
-    const url = `/uploads/${bucket}/${fileName}`;
 
     if (bucket === "avatars") {
       await db
@@ -186,18 +205,30 @@ export async function DELETE(req: NextRequest) {
         { status: 400 },
       );
     }
-    if (!url.startsWith("/uploads/avatars/")) {
+    const isLocalAvatar = url.startsWith("/uploads/avatars/");
+    const isBlobAvatar =
+      BLOB_ENABLED && /^https:\/\/[^/]+\.public\.blob\.vercel-storage\.com\/avatars\//.test(url);
+
+    if (!isLocalAvatar && !isBlobAvatar) {
       return NextResponse.json(
         { error: { message: "لا يمكن حذف هذا الملف" } },
         { status: 403 },
       );
     }
-    // Path safety: reject if contains traversal
-    if (url.includes("..") || url.includes("//")) {
+    // Path safety: reject if contains traversal (local paths only)
+    if (isLocalAvatar && (url.includes("..") || url.includes("//"))) {
       return NextResponse.json(
         { error: { message: "مسار غير صالح" } },
         { status: 400 },
       );
+    }
+    if (isBlobAvatar) {
+      try {
+        const { del } = await import("@vercel/blob");
+        await del(url);
+      } catch {
+        // حذف الملف من التخزين فشل — نكمل بإزالة الرابط من الحساب
+      }
     }
     await db
       .update(users)
