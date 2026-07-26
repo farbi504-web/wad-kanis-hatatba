@@ -122,31 +122,43 @@ export const users = pgTable(
 /* =========================
    CITIES
    ========================= */
-export const cities = pgTable("cities", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 80 }).notNull(),
-  slug: varchar("slug", { length: 80 }).notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const cities = pgTable(
+  "cities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: varchar("name", { length: 80 }).notNull(),
+    slug: varchar("slug", { length: 80 }).notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    slugIdx: uniqueIndex("cities_slug_unique").on(t.slug),
+  }),
+);
 
 /* =========================
    CATEGORIES
    ========================= */
-export const categories = pgTable("categories", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 100 }).notNull(),
-  slug: varchar("slug", { length: 100 }).notNull(),
-  icon: varchar("icon", { length: 60 }),
-  description: text("description"),
-  sortOrder: integer("sort_order").notNull().default(0),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const categories = pgTable(
+  "categories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: varchar("name", { length: 100 }).notNull(),
+    slug: varchar("slug", { length: 100 }).notNull(),
+    icon: varchar("icon", { length: 60 }),
+    description: text("description"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    slugIdx: uniqueIndex("categories_slug_unique").on(t.slug),
+  }),
+);
 
 /* =========================
    LISTINGS
