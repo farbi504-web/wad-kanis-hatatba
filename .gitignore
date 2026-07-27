@@ -67,3 +67,6 @@ public/uploads/
 
 # TypeScript
 *.tsbuildinfo
+
+# ملف تجربة محلية يولّده scripts/try-local.sh
+.env.local.try
