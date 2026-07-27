@@ -15,7 +15,7 @@ PORT="${PORT:-3000}"
 PGPORT="${PGPORT:-54329}"
 PGDIR="${PGDIR:-/tmp/wdk-pgdata}"
 DBNAME="wadkanis_local"
-ENVFILE=".env.local.try"
+ENVFILE=".env.local"   # Next.js يقرأه تلقائياً
 
 cyan()  { printf "\033[36m%s\033[0m\n" "$1"; }
 green() { printf "\033[32m%s\033[0m\n" "$1"; }
@@ -66,6 +66,14 @@ else
   PG_BIN="$EMB"
 fi
 
+# أوقف أي خادم سابق على نفس المجلد (قد يبقى عالقاً من تشغيلة سابقة)
+"$PG_BIN/pg_ctl" -D "$PGDIR" stop -m immediate >/dev/null 2>&1 || true
+
+# مجلد بيانات ناقص أو تالف → أعد التهيئة من الصفر
+if [ -d "$PGDIR" ] && [ ! -f "$PGDIR/global/pg_filenode.map" ]; then
+  rm -rf "$PGDIR"
+fi
+
 if [ ! -d "$PGDIR/base" ]; then
   cyan "→ تهيئة قاعدة البيانات..."
   rm -rf "$PGDIR"; mkdir -p "$PGDIR"
@@ -73,8 +81,20 @@ if [ ! -d "$PGDIR/base" ]; then
   "$PG_BIN/initdb" -D "$PGDIR" -U postgres --auth=trust --pwfile=/tmp/wdk-pw -E UTF8 >/dev/null 2>&1
 fi
 
+rm -f "$PGDIR/postmaster.pid" 2>/dev/null || true
 "$PG_BIN/pg_ctl" -D "$PGDIR" -o "-p $PGPORT -k /tmp" -l /tmp/wdk-pg.log start >/dev/null 2>&1 || true
 sleep 3
+
+if ! node -e "
+const {Client}=require('pg');
+new Client({host:'/tmp',port:$PGPORT,user:'postgres',database:'postgres'})
+  .connect().then(c=>process.exit(0)).catch(()=>process.exit(1));
+" 2>/dev/null; then
+  red "✗ تعذّر تشغيل PostgreSQL. جرّب حذف المجلد ثم أعد المحاولة:"
+  echo "    rm -rf $PGDIR && bash scripts/try-local.sh"
+  echo "  السجل: /tmp/wdk-pg.log"
+  exit 1
+fi
 green "✓ PostgreSQL يعمل على المنفذ $PGPORT"
 
 node -e "
