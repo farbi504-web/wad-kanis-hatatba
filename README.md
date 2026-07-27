@@ -134,7 +134,7 @@ curl -X POST http://localhost:3000/api/seed \
 
 | المنصة | الدليل | ملاحظة |
 |--------|--------|--------|
-| **Vercel** | [`النشر-على-Vercel.md`](./النشر-على-Vercel.md) | مفصّل بالعربية — يتطلب Vercel Blob للصور |
+| **Vercel** | [`DEPLOY-VERCEL-AR.md`](./DEPLOY-VERCEL-AR.md) | دليل مفصّل بالعربية — يتطلب Vercel Blob للصور |
 | **VPS / Railway** | [`DEPLOYMENT.md`](./DEPLOYMENT.md) | سكربتات Nginx و systemd جاهزة في `scripts/` |
 
 ### تخزين الصور
